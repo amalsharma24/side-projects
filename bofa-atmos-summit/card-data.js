@@ -1,10 +1,12 @@
 // Card Data and Configuration for Atmos™ Rewards / Bank of America Alaska & Hawaiian Airlines Premium Card
 
+(function () {
 const CARD_CONFIG = {
   cardName: "Atmos™ Rewards Premium Card",
   issuer: "Bank of America / Alaska Airlines & Hawaiian Airlines",
   defaultAnnualFee: 395, // Verified from actual statement eStmt_2025-10-16.md
   pointValuationCents: 1.4, // Standard conservative Alaska/Atmos valuation: 1.4¢ per point
+  hasBofaBonus: true,
   
   // Benchmark comparison for spend (e.g. standard 2% flat cash back card)
   baselineCashbackRate: 0.02,
@@ -47,11 +49,11 @@ const CARD_CONFIG = {
       id: "status_boost",
       category: "Elite Status",
       title: "10,000 Atmos™ Status Points Boost",
-      description: "Boost your Atmos™ Rewards membership status with 10,000 status qualifying points every account anniversary.",
-      faceValue: 150,
-      defaultValue: 0, // Defaulted to $0 for your profile
+      description: "Boost your Atmos™ Rewards membership status with 10,000 status qualifying points every account anniversary, enabling Silver status alongside flown miles.",
+      faceValue: 300,
+      defaultValue: 202.5, // $202.50 Silver status valuation
       unit: "fixed",
-      helpText: "Status points only count toward Elite tiers (not spendable miles). If you don't fly enough to cross 20k MVP, value is $0.",
+      helpText: "Valued at $202.50 ($203): Unlocks Silver status (20k tier). Breakdown: Preferred & exit row seating ($90 = 6 flights @ $15), Premium Class upgrades ($60 = 2 @ $30), 25% bonus points on ~15K flown miles ($52.50 = 3,750 pts @ 1.4¢), Free checked bags ($0 - already covered by card), Priority check-in/boarding ($0 - card perk), First Class upgrades ($0).",
       details: {
         pointsAmount: 10000,
         canDisable: true
@@ -160,47 +162,51 @@ const CARD_CONFIG = {
   spendCategories: [
     {
       id: "dining",
-      name: "Eligible Dining",
+      name: "Dining",
       multiplier: 3,
       defaultAnnualSpend: 0, // Zeroed going forward (put on Amex Gold 4X)
       helpText: "Restaurants, cafes, takeout, delivery",
       baselineCard: "Amex Gold",
-      baselineRatePct: 6.0,
-      baselineMultiplierText: "4X (6.0%)",
-      baselineFormula: "4X MR points valued at 1.5¢/pt"
+      baselineMultiplier: 4,
+      baselineRatePct: 7.0,
+      baselineMultiplierText: "4X (7.0%)",
+      baselineFormula: "4X MR points valued at 1.75¢/pt"
     },
     {
       id: "alaska_hawaiian",
-      name: "Alaska & Hawaiian Airlines Purchases",
+      name: "Alaska & Hawaiian Airlines",
       multiplier: 3,
       defaultAnnualSpend: 996, // Statement 12-mo interpolated (Required to unlock bag perks)
       helpText: "Direct flights, seat upgrades, inflight purchases",
       baselineCard: "Amex Platinum",
-      baselineRatePct: 10.0,
-      baselineMultiplierText: "5X (10.0%)",
-      baselineFormula: "5X MR points valued at 2.0¢/pt"
+      baselineMultiplier: 5,
+      baselineRatePct: 8.75,
+      baselineMultiplierText: "5X (8.75%)",
+      baselineFormula: "5X MR points valued at 1.75¢/pt"
     },
     {
       id: "foreign_tx",
-      name: "Eligible Foreign Transactions",
+      name: "Foreign Transactions",
       multiplier: 3,
       defaultAnnualSpend: 12136, // Statement 12-mo interpolated
       helpText: "Purchases made in foreign currencies / abroad",
       baselineCard: "Venture X",
-      baselineRatePct: 4.0,
-      baselineMultiplierText: "2X (4.0%)",
-      baselineFormula: "2X Capital One miles valued at 2.0¢/pt"
+      baselineMultiplier: 2,
+      baselineRatePct: 3.5,
+      baselineMultiplierText: "2X (3.5%)",
+      baselineFormula: "2X Capital One miles valued at 1.75¢/pt"
     },
     {
       id: "all_other",
-      name: "All Other Purchases",
+      name: "Other",
       multiplier: 1,
       defaultAnnualSpend: 0, // Zeroed going forward (put on Venture X 2X)
       helpText: "Groceries, retail, utilities, subscriptions",
       baselineCard: "Venture X",
-      baselineRatePct: 4.0,
-      baselineMultiplierText: "2X (4.0%)",
-      baselineFormula: "2X Capital One miles valued at 2.0¢/pt"
+      baselineMultiplier: 2,
+      baselineRatePct: 3.5,
+      baselineMultiplierText: "2X (3.5%)",
+      baselineFormula: "2X Capital One miles valued at 1.75¢/pt"
     }
   ],
 
@@ -215,8 +221,8 @@ const CARD_CONFIG = {
 
   // Presets
   presets: {
-    my_actual: {
-      name: "Forward Strategy (Foreign + Alaska Flights Only)",
+    personalized_default: {
+      name: "Personalized Default",
       description: "Going forward: $0 dining (Amex Gold) & $0 other (Venture X). Only Alaska flights ($996 to unlock bags) and Foreign spend ($12,136). Fee: $395.",
       annualFee: 395,
       bofaBonus: false,
@@ -225,7 +231,7 @@ const CARD_CONFIG = {
       benefits: {
         companion_award_anniversary: 0,
         lounge_passes: 30, // 2 visits @ $15
-        status_boost: 0, // $0
+        status_boost: 202.5, // $202.50 Silver status valuation
         checked_bags: 270, // 6 flights @ $45
         same_day_change: 0,
         preferred_boarding: 0,
@@ -240,110 +246,17 @@ const CARD_CONFIG = {
         foreign_tx: 12136,
         all_other: 0
       }
-    },
-    moderate: {
-      name: "Standard Occasional Traveler",
-      description: "Travels 2-3 times/year on Alaska/Hawaiian, uses 4 lounge passes, 1 companion award, checked bags for couple once, holds PreCheck on another card.",
-      annualFee: 495,
-      bofaBonus: true,
-      hasOtherPrecheck: true,
-      hit60kSpend: false,
-      benefits: {
-        companion_award_anniversary: 350,
-        lounge_passes: 180, // 4 visits @ $45
-        status_boost: 100,
-        checked_bags: 140, // 2 bags roundtrip
-        same_day_change: 75, // 1 change
-        preferred_boarding: 20,
-        airport_security: 0, // already covered by other card
-        instant_delay_credit: 25,
-        point_sharing_perk: 15,
-        spend_tier_60k_companion: 0
-      },
-      annualSpend: {
-        dining: 6000,
-        alaska_hawaiian: 2000,
-        foreign_tx: 1200,
-        all_other: 12000
-      }
-    },
-    frequent_flyer: {
-      name: "Alaska Road Warrior / Elite",
-      description: "Regular West Coast / Hawaii traveler. Maximizes lounge passes, companion certificates, same-day changes, status points, and flight booking multipliers.",
-      annualFee: 495,
-      bofaBonus: true,
-      hasOtherPrecheck: false,
-      hit60kSpend: false,
-      benefits: {
-        companion_award_anniversary: 400,
-        lounge_passes: 360, // 8 visits @ $45
-        status_boost: 150,
-        checked_bags: 210, // 3 roundtrips
-        same_day_change: 150, // 2 changes
-        preferred_boarding: 40,
-        airport_security: 30,
-        instant_delay_credit: 50,
-        point_sharing_perk: 35,
-        spend_tier_60k_companion: 0
-      },
-      annualSpend: {
-        dining: 10000,
-        alaska_hawaiian: 6000,
-        foreign_tx: 3000,
-        all_other: 24000
-      }
-    },
-    skeptic_conservative: {
-      name: "Skeptical / Strict Valuation",
-      description: "Applies heavy haircuts: discounts lounge passes due to 2/quarter rule, already has PreCheck, values points strictly at 1.2¢, minimal bag usage.",
-      annualFee: 495,
-      bofaBonus: false,
-      hasOtherPrecheck: true,
-      hit60kSpend: false,
-      benefits: {
-        companion_award_anniversary: 250,
-        lounge_passes: 90, // only 2 visits used
-        status_boost: 50,
-        checked_bags: 70, // 1 solo bag roundtrip
-        same_day_change: 0,
-        preferred_boarding: 0,
-        airport_security: 0,
-        instant_delay_credit: 0,
-        point_sharing_perk: 0,
-        spend_tier_60k_companion: 0
-      },
-      annualSpend: {
-        dining: 3600,
-        alaska_hawaiian: 1200,
-        foreign_tx: 600,
-        all_other: 7200
-      }
-    },
-    heavy_spender_60k: {
-      name: "Heavy Spender ($60k+ / Big Earner)",
-      description: "Routes primary household/business spend to hit the $60,000 milestone for the 100,000-point companion award.",
-      annualFee: 495,
-      bofaBonus: true,
-      hasOtherPrecheck: false,
-      hit60kSpend: true,
-      benefits: {
-        companion_award_anniversary: 375,
-        lounge_passes: 320,
-        status_boost: 150,
-        checked_bags: 140,
-        same_day_change: 75,
-        preferred_boarding: 30,
-        airport_security: 30,
-        instant_delay_credit: 50,
-        point_sharing_perk: 50,
-        spend_tier_60k_companion: 1400 // 100k points @ 1.4¢
-      },
-      annualSpend: {
-        dining: 15000,
-        alaska_hawaiian: 7500,
-        foreign_tx: 5000,
-        all_other: 35000 // Total = $62,500/yr
-      }
     }
   }
 };
+
+if (typeof window !== 'undefined') {
+  window.CARDS_DATA = window.CARDS_DATA || {};
+  window.CARDS_DATA['bofa-atmos-summit'] = CARD_CONFIG;
+  if (!window.CARD_CONFIG) {
+    window.CARD_CONFIG = CARD_CONFIG;
+  }
+}
+})();
+
+

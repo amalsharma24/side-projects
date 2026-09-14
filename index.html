@@ -3,30 +3,38 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Credit Card Renewal ROI Analyzer | Atmos™ Rewards Premium</title>
+  <title id="page-title">Credit Card Renewal ROI Analyzer</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div class="container">
     
+    <!-- Card Selector Top Bar -->
+    <nav class="card-selector-bar">
+      <div class="selector-inner">
+        <label for="card-selector" class="selector-label">
+          <span class="selector-icon">💳</span>
+          <span class="selector-title">Card Analysis Lab:</span>
+        </label>
+        <div class="select-wrapper">
+          <select id="card-selector" class="card-select-dropdown" aria-label="Select Credit Card to Analyze">
+            <!-- Populated dynamically from CARDS_REGISTRY -->
+          </select>
+        </div>
+      </div>
+    </nav>
+
     <!-- Top Header -->
     <header class="header">
       <div class="header-title-group">
-        <h1>
-          Atmos™ Rewards Premium Card
-          <span class="badge-card">Bank of America</span>
+        <h1 id="header-card-name">
+          Credit Card ROI Analyzer
+          <span class="badge-card" id="header-card-issuer">Issuer</span>
         </h1>
-        <p class="header-subtitle">
-          Alaska Airlines & Hawaiian Airlines • Annual Fee vs Recurring Perks Valuation Model
+        <p class="header-subtitle" id="header-card-subtitle">
+          Annual Fee vs Recurring Perks & Spend Valuation Model
         </p>
       </div>
-
-      <!-- Mode Toggle: Renewal vs Year 1 (Commented out)
-      <div class="mode-toggle">
-        <button id="btn-mode-renewal" class="mode-btn active">Year 2+ Renewal Analysis</button>
-        <button id="btn-mode-yearone" class="mode-btn">Year 1 (With Welcome Bonus)</button>
-      </div>
-      -->
     </header>
 
     <!-- Hero Verdict Banner -->
@@ -35,8 +43,8 @@
         <div>
           <span class="verdict-label">Renewal Decision Recommendation</span>
           <div class="verdict-status">
-            <span id="verdict-pill" class="verdict-pill renew">RENEW</span>
-            <span id="verdict-amount" class="verdict-amount positive">+$425</span>
+            <span id="verdict-pill" class="verdict-pill renew">CALCULATING</span>
+            <span id="verdict-amount" class="verdict-amount positive">$0</span>
           </div>
         </div>
         <p id="verdict-explanation" class="verdict-explanation">
@@ -48,37 +56,36 @@
       <div class="kpi-grid">
         <div class="kpi-card">
           <span class="kpi-title">Annual Fee</span>
-          <span id="kpi-annual-fee" class="kpi-value">$395</span>
-          <span class="kpi-sub">Statement fee charged</span>
+          <span id="kpi-annual-fee" class="kpi-value">$0</span>
+          <span class="kpi-sub" id="kpi-fee-sub">Statement fee charged</span>
         </div>
 
         <div class="kpi-card">
           <span class="kpi-title">Perceived Perks Value</span>
-          <span id="kpi-total-benefits" class="kpi-value">$350</span>
-          <span class="kpi-sub">Bags ($270), Lounge ($30), Delay ($50)</span>
+          <span id="kpi-total-benefits" class="kpi-value">$0</span>
+          <span class="kpi-sub" id="kpi-benefits-sub">Perks & credits utilized</span>
         </div>
 
         <div class="kpi-card">
           <span class="kpi-title">Spend Edge vs. Wallet</span>
-          <span id="kpi-spend-rewards" class="kpi-value" style="color:var(--accent-red);">-$34</span>
-          <span id="kpi-spend-inc" class="kpi-sub" style="color:var(--accent-red);">vs Amex Plat & Venture X</span>
+          <span id="kpi-spend-rewards" class="kpi-value">$0</span>
+          <span id="kpi-spend-inc" class="kpi-sub">vs Benchmark Cards</span>
         </div>
 
         <!-- Progress Bar: Value vs Fee -->
         <div class="roi-bar-container">
           <div class="roi-bar-labels">
-            <span id="bar-label-total">Total Return: $930</span>
-            <span id="bar-label-fee">Annual Fee: $395</span>
+            <span id="bar-label-total">Total Return: $0</span>
+            <span id="bar-label-fee">Annual Fee: $0</span>
           </div>
           <div class="roi-bar-track">
-            <div id="bar-perks" class="roi-bar-fill bar-perks" style="width: 40%;"></div>
-            <div id="bar-spend" class="roi-bar-fill bar-spend" style="width: 60%;"></div>
-            <div id="bar-fee-marker" class="roi-marker" style="left: 42%;" title="Annual Fee Break-even Point"></div>
+            <div id="bar-perks" class="roi-bar-fill bar-perks" style="width: 0%;"></div>
+            <div id="bar-spend" class="roi-bar-fill bar-spend" style="width: 0%;"></div>
+            <div id="bar-fee-marker" class="roi-marker" style="left: 0%;" title="Annual Fee Break-even Point"></div>
           </div>
         </div>
       </div>
     </section>
-
 
     <!-- Main Content: Single Column Layout -->
     <div class="main-layout">
@@ -89,19 +96,29 @@
           <div class="section-title">
             <span>Spend Rewards vs. Baseline Wallet</span>
           </div>
-          <span class="section-badge" id="spend-total-annual">$25,500/yr</span>
+          <span class="section-badge" id="spend-total-annual">$0/yr</span>
         </div>
 
-        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
-          Comparing rewards earned on Atmos vs. swiping your existing cards (Amex Gold 4X, Amex Plat 5X, Venture X 2X):
-        </p>
+        <div class="spend-controls-bar">
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 0;" id="spend-comparison-desc">
+            Comparing rewards earned on this card vs. swiping your baseline cards (Amex Gold 4X, Amex Plat 5X, Venture X 2X):
+          </p>
+          <div class="baseline-sensitivity-box">
+            <span class="baseline-sensitivity-label">Baseline Valuation:</span>
+            <div class="mode-toggle baseline-toggle-group" id="baseline-toggle-container">
+              <button type="button" class="mode-btn baseline-btn" data-baseline-tier="conservative" title="Conservative valuation: 1.5¢/pt (2X = 3.0%, 4X = 6.0%, 5X = 7.5%)">Conservative (1.5 cpp)</button>
+              <button type="button" class="mode-btn baseline-btn active" data-baseline-tier="realistic" title="Realistic valuation: 1.75¢/pt (2X = 3.5%, 4X = 7.0%, 5X = 8.75%)">Realistic (1.75 cpp)</button>
+              <button type="button" class="mode-btn baseline-btn" data-baseline-tier="optimistic" title="Optimistic valuation: 2.0¢/pt (2X = 4.0%, 4X = 8.0%, 5X = 10.0%)">Optimistic (2.0 cpp)</button>
+            </div>
+          </div>
+        </div>
 
         <table class="spend-table">
           <thead>
             <tr>
               <th>Category</th>
               <th>Annual Spend</th>
-              <th>Atmos Return</th>
+              <th id="th-card-return">Card Return</th>
               <th>Your Baseline Card</th>
               <th>Net vs Baseline</th>
             </tr>
@@ -113,11 +130,11 @@
 
         <div style="background:#131c2c; padding:14px; border-radius:8px; border:1px solid var(--border-color); font-size:12px; color:var(--text-muted);">
           <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
-            <span>Atmos Rewards Earned:</span>
+            <span id="spend-rewards-label">Card Rewards Earned:</span>
             <strong id="spend-points-total" style="color:var(--text-main);">0 pts ($0)</strong>
           </div>
           <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
-            <span>Baseline Wallet Earnings (Amex + Venture X):</span>
+            <span>Baseline Wallet Earnings:</span>
             <strong id="spend-baseline-total" style="color:#c084fc;">$0</strong>
           </div>
           <div style="display:flex; justify-content:space-between; padding-top:6px; border-top:1px solid rgba(255,255,255,0.08);">
@@ -155,7 +172,7 @@
         <div class="setting-row">
           <div>
             <div class="setting-label">Annual Fee</div>
-            <div class="setting-subtext">Verified from statement: $395.00 billed annually</div>
+            <div class="setting-subtext" id="setting-fee-subtext">Verified statement fee billed annually</div>
           </div>
           <div class="setting-control">
             <input type="number" id="input-annual-fee" value="395" step="5">
@@ -164,19 +181,29 @@
 
         <div class="setting-row">
           <div>
-            <div class="setting-label">Atmos Point Valuation</div>
-            <div class="setting-subtext">Default 1.4¢/pt (conservative Alaska redemption)</div>
+            <div class="setting-label" id="setting-point-label">Point Valuation</div>
+            <div class="setting-subtext" id="setting-point-subtext">Estimated cents per point/mile upon redemption</div>
           </div>
           <div class="setting-control">
             <input type="number" id="input-point-val" value="1.4" step="0.1" min="0.5" max="3.0">
           </div>
         </div>
 
-        <!-- BofA 10% Bonus Callout -->
-        <div class="bofa-bonus-box" style="margin-top: 14px;">
+        <div class="setting-row">
           <div>
-            <div class="bofa-title">Bank of America® 10% Rewards Bonus</div>
-            <div class="bofa-desc">Earn 10% more points if you hold an eligible BofA checking/savings account.</div>
+            <div class="setting-label">Baseline Points Valuation</div>
+            <div class="setting-subtext" id="setting-baseline-subtext">Benchmark cents per point for baseline cards (Amex MR / Capital One miles)</div>
+          </div>
+          <div class="setting-control">
+            <input type="number" id="input-baseline-cpp" value="1.75" step="0.05" min="0.5" max="3.0">
+          </div>
+        </div>
+
+        <!-- Bank / Relationship Bonus Callout -->
+        <div class="bofa-bonus-box" id="relationship-bonus-box" style="margin-top: 14px;">
+          <div>
+            <div class="bofa-title" id="relationship-bonus-title">Bank of America® 10% Rewards Bonus</div>
+            <div class="bofa-desc" id="relationship-bonus-desc">Earn 10% more points if you hold an eligible BofA checking/savings account.</div>
           </div>
           <label class="toggle-switch">
             <input type="checkbox" id="toggle-bofa-bonus">
@@ -186,15 +213,13 @@
       </div>
 
     </div>
-
-    <footer class="footer">
-      Atmos™ Rewards / Bank of America Alaska & Hawaiian Airlines Card ROI Analyzer • Local Lab at <code>C:\dev\labs\credit-card-roi</code>
-    </footer>
-
   </div>
 
   <!-- Scripts -->
-  <script src="card-data.js"></script>
+  <script src="cards-registry.js"></script>
+  <script src="bofa-atmos-summit/card-data.js"></script>
+  <script src="bofa-atmos-ascent/card-data.js"></script>
+  <script src="citi-strata-elite/card-data.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

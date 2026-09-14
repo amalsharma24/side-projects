@@ -1,13 +1,24 @@
-// Credit Card Renewal ROI Engine & Reactive UI Controller
+// Credit Card Renewal ROI Engine & Reactive UI Controller (Card-Agnostic)
 
 (function () {
+  // Baseline Valuation Sensitivity Tiers
+  const BASELINE_TIERS = {
+    conservative: { name: 'Conservative', cpp: 1.5, label: 'Conservative (1.5 cpp)' },
+    realistic: { name: 'Realistic', cpp: 1.75, label: 'Realistic (1.75 cpp)' },
+    optimistic: { name: 'Optimistic', cpp: 2.0, label: 'Optimistic (2.0 cpp)' }
+  };
+
   // Application State
   const state = {
+    activeCardId: 'bofa-atmos-summit',
+    config: null,
     mode: 'renewal', // 'renewal' or 'year_one'
-    annualFee: CARD_CONFIG.defaultAnnualFee,
-    pointValuationCents: CARD_CONFIG.pointValuationCents,
-    bofaBonusActive: false, // Disabled by default per user request
-    activePreset: 'my_actual',
+    annualFee: 0,
+    pointValuationCents: 1.4,
+    baselineTier: 'realistic', // 'conservative', 'realistic', 'optimistic', or custom
+    baselineCpp: 1.75, // Default to 1.75 cpp realistic
+    bofaBonusActive: false,
+    activePreset: 'personalized_default',
     
     // Benefit values & toggles
     benefits: {},
@@ -16,68 +27,208 @@
     annualSpend: {}
   };
 
-  // Initialize state with default preset
-  function initStateFromPreset(presetKey) {
-    const preset = CARD_CONFIG.presets[presetKey] || CARD_CONFIG.presets.my_actual;
-    state.activePreset = presetKey;
-    state.annualFee = preset.annualFee;
-    state.bofaBonusActive = preset.bofaBonus;
-    
-    // Sync BofA bonus checkbox in UI
-    const bofaToggle = document.getElementById('toggle-bofa-bonus');
-    if (bofaToggle) {
-      bofaToggle.checked = state.bofaBonusActive;
+  // Get active card ID from URL (query param ?card=... or hash #...)
+  function getInitialCardId() {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const cardParam = urlParams.get('card');
+      if (cardParam && window.CARDS_DATA && window.CARDS_DATA[cardParam]) {
+        return cardParam;
+      }
+      const hash = window.location.hash.replace('#', '');
+      if (hash && window.CARDS_DATA && window.CARDS_DATA[hash]) {
+        return hash;
+      }
+    } catch (e) {
+      // Fallback
     }
+
+    // Default to first card in CARDS_REGISTRY or fallback to summit
+    if (window.CARDS_REGISTRY && window.CARDS_REGISTRY.length > 0) {
+      return window.CARDS_REGISTRY[0].id;
+    }
+    return 'bofa-atmos-summit';
+  }
+
+  // Populate card dropdown selector
+  function initCardSelector() {
+    const selector = document.getElementById('card-selector');
+    if (!selector) return;
+
+    selector.innerHTML = '';
+    const registry = window.CARDS_REGISTRY || [
+      { id: 'bofa-atmos-summit', name: 'Bank of America Atmos™ Summit Card ($395)' },
+      { id: 'bofa-atmos-ascent', name: 'Bank of America Atmos™ Ascent Card ($95)' }
+    ];
+
+    registry.forEach(card => {
+      const opt = document.createElement('option');
+      opt.value = card.id;
+      opt.textContent = card.name;
+      if (card.id === state.activeCardId) {
+        opt.selected = true;
+      }
+      selector.appendChild(opt);
+    });
+
+    selector.addEventListener('change', (e) => {
+      const newCardId = e.target.value;
+      switchCard(newCardId);
+    });
+  }
+
+  // Switch Active Card
+  function switchCard(cardId) {
+    if (!window.CARDS_DATA || !window.CARDS_DATA[cardId]) {
+      console.error(`Card data for ${cardId} not loaded.`);
+      return;
+    }
+
+    state.activeCardId = cardId;
+    state.config = window.CARDS_DATA[cardId];
+    window.CARD_CONFIG = state.config;
+
+    // Update URL without page reload
+    try {
+      const url = new URL(window.location);
+      url.searchParams.set('card', cardId);
+      window.history.replaceState({}, '', url);
+    } catch (e) {
+      window.location.hash = cardId;
+    }
+
+    // Update Card Dropdown value if needed
+    const selector = document.getElementById('card-selector');
+    if (selector && selector.value !== cardId) {
+      selector.value = cardId;
+    }
+
+    // Initialize state with first available preset
+    const presetKeys = Object.keys(state.config.presets || {});
+    const defaultPresetKey = presetKeys.includes('personalized_default') 
+      ? 'personalized_default' 
+      : (presetKeys.includes('my_actual') ? 'my_actual' : presetKeys[0]);
+    initStateFromPreset(defaultPresetKey);
+
+    renderCardMetadata();
+    renderAll();
+  }
+
+  // Initialize state from a preset
+  function initStateFromPreset(presetKey) {
+    const config = state.config;
+    const preset = config.presets[presetKey] || Object.values(config.presets)[0];
+    state.activePreset = presetKey;
+    state.annualFee = preset.annualFee !== undefined ? preset.annualFee : config.defaultAnnualFee;
+    state.pointValuationCents = config.pointValuationCents || 1.4;
+    state.bofaBonusActive = !!preset.bofaBonus;
+    
+    // Sync UI inputs
+    const feeInput = document.getElementById('input-annual-fee');
+    if (feeInput) feeInput.value = state.annualFee;
+
+    const ptInput = document.getElementById('input-point-val');
+    if (ptInput) ptInput.value = state.pointValuationCents;
+
+    const baselineInput = document.getElementById('input-baseline-cpp');
+    if (baselineInput) baselineInput.value = state.baselineCpp;
+
+    const bofaToggle = document.getElementById('toggle-bofa-bonus');
+    if (bofaToggle) bofaToggle.checked = state.bofaBonusActive;
     
     // Init benefits
-    CARD_CONFIG.benefits.forEach(b => {
-      const isConfigured = preset.benefits.hasOwnProperty(b.id);
+    state.benefits = {};
+    config.benefits.forEach(b => {
+      const isConfigured = preset.benefits && preset.benefits.hasOwnProperty(b.id);
       const val = isConfigured ? preset.benefits[b.id] : b.defaultValue;
       
       state.benefits[b.id] = {
-        enabled: val > 0 || (b.id === 'spend_tier_60k_companion' && preset.hit60kSpend),
+        enabled: val > 0 || (b.details && b.details.enabledByDefault),
         userValue: val,
         customized: false
       };
     });
 
     // Init annual spend
-    CARD_CONFIG.spendCategories.forEach(cat => {
+    state.annualSpend = {};
+    config.spendCategories.forEach(cat => {
       state.annualSpend[cat.id] = (preset.annualSpend && preset.annualSpend[cat.id] !== undefined) 
         ? preset.annualSpend[cat.id] 
-        : cat.defaultAnnualSpend;
+        : (cat.defaultAnnualSpend || 0);
     });
   }
 
-  // Core ROI Calculation
+  // Render Card-Level Metadata (Header, Badges, Notes)
+  function renderCardMetadata() {
+    const config = state.config;
+    document.title = `Credit Card Renewal ROI Analyzer | ${config.cardName}`;
+
+    const headerName = document.getElementById('header-card-name');
+    if (headerName) {
+      headerName.innerHTML = `
+        ${config.cardName}
+        <span class="badge-card" id="header-card-issuer">${config.issuer || 'Credit Card'}</span>
+      `;
+    }
+
+    const headerSubtitle = document.getElementById('header-card-subtitle');
+    if (headerSubtitle) {
+      headerSubtitle.textContent = `${config.cardName} • $${state.annualFee} Annual Fee vs. Recurring Perks & Spend Valuation`;
+    }
+
+    const thCardReturn = document.getElementById('th-card-return');
+    if (thCardReturn) {
+      thCardReturn.textContent = `${config.cardName.replace(' Card', '')} Return`;
+    }
+
+    const spendRewardsLabel = document.getElementById('spend-rewards-label');
+    if (spendRewardsLabel) {
+      spendRewardsLabel.textContent = `${config.cardName.replace(' Card', '')} Rewards Earned:`;
+    }
+
+    const feeSubtext = document.getElementById('setting-fee-subtext');
+    if (feeSubtext) {
+      feeSubtext.textContent = `Card annual fee: $${state.annualFee}.00 billed annually`;
+    }
+
+    const relBox = document.getElementById('relationship-bonus-box');
+    if (relBox) {
+      relBox.style.display = state.config.hasBofaBonus ? 'flex' : 'none';
+    }
+  }
+
+  // Core ROI Calculation Engine
   function calculateMetrics() {
+    const config = state.config;
+
     // 1. Calculate Perks & Credits
     let totalPerksValue = 0;
-    CARD_CONFIG.benefits.forEach(b => {
+    config.benefits.forEach(b => {
       const item = state.benefits[b.id];
       if (item && item.enabled) {
         totalPerksValue += Number(item.userValue) || 0;
       }
     });
 
-    // 2. If in Year 1 mode, add welcome bonus
+    // 2. Year 1 welcome bonus if active
     let welcomeBonusValue = 0;
-    if (state.mode === 'year_one') {
-      const wb = CARD_CONFIG.yearOneWelcomeOffer;
-      // 80,000 points + 25,000 point companion award
-      const totalWelcomePoints = wb.bonusPoints + wb.companionAwardPoints;
-      welcomeBonusValue = (totalWelcomePoints * (state.pointValuationCents / 100));
+    if (state.mode === 'year_one' && config.yearOneWelcomeOffer) {
+      const wb = config.yearOneWelcomeOffer;
+      const totalPoints = (wb.bonusPoints || 0) + (wb.companionAwardPoints || 0);
+      welcomeBonusValue = totalPoints > 0 
+        ? (totalPoints * (state.pointValuationCents / 100))
+        : (wb.estimatedValue || 0);
       totalPerksValue += welcomeBonusValue;
     }
 
-    // 3. Calculate Spend Points & Incremental Return vs Baseline Wallet Cards
+    // 3. Calculate Spend Points & Incremental Return vs Baseline Cards
     let totalAnnualSpend = 0;
     let totalPointsEarned = 0;
-    let totalAtmosSpendValue = 0;
+    let totalCardSpendValue = 0;
     let totalBaselineWalletValue = 0;
-    const bonusMultiplier = state.bofaBonusActive ? 1.10 : 1.0;
+    const bonusMultiplier = (state.config.hasBofaBonus && state.bofaBonusActive) ? 1.10 : 1.0;
 
-    const categoryBreakdowns = CARD_CONFIG.spendCategories.map(cat => {
+    const categoryBreakdowns = config.spendCategories.map(cat => {
       const annualCatSpend = Number(state.annualSpend[cat.id]) || 0;
       totalAnnualSpend += annualCatSpend;
 
@@ -85,31 +236,41 @@
       const pts = annualCatSpend * effectiveMultiplier;
       totalPointsEarned += pts;
 
-      const atmosReturnPct = effectiveMultiplier * state.pointValuationCents;
-      const atmosVal = pts * (state.pointValuationCents / 100);
-      totalAtmosSpendValue += atmosVal;
+      const cardReturnPct = effectiveMultiplier * state.pointValuationCents;
+      const cardVal = pts * (state.pointValuationCents / 100);
+      totalCardSpendValue += cardVal;
 
-      const baselineRatePct = cat.baselineRatePct || 4.0;
+      // Dynamic baseline calculation based on category baselineMultiplier and state.baselineCpp
+      const baselineMultiplier = cat.baselineMultiplier !== undefined
+        ? cat.baselineMultiplier
+        : (cat.baselineRatePct ? Math.round(cat.baselineRatePct / 2) : 2);
+      const baselineRatePct = baselineMultiplier * state.baselineCpp;
       const baselineVal = annualCatSpend * (baselineRatePct / 100);
       totalBaselineWalletValue += baselineVal;
 
-      const diffVsBaseline = atmosVal - baselineVal;
+      const diffVsBaseline = cardVal - baselineVal;
+      const formattedRate = Number.isInteger(baselineRatePct)
+        ? baselineRatePct.toString()
+        : baselineRatePct.toFixed(2).replace(/\.00$/, '').replace(/(\.[1-9])0$/, '$1');
+      const baselineMultiplierText = `${baselineMultiplier}X (${formattedRate}%)`;
 
       return {
         ...cat,
         annualSpend: annualCatSpend,
         effectiveMultiplier,
         pts: Math.round(pts),
-        atmosReturnPct,
-        atmosVal,
+        cardReturnPct,
+        cardVal,
+        baselineMultiplier,
         baselineRatePct,
+        baselineMultiplierText,
         baselineVal,
         diffVsBaseline
       };
     });
 
-    const spendRewardsDollarVal = totalAtmosSpendValue;
-    const incrementalSpendAdvantage = totalAtmosSpendValue - totalBaselineWalletValue;
+    const spendRewardsDollarVal = totalCardSpendValue;
+    const incrementalSpendAdvantage = totalCardSpendValue - totalBaselineWalletValue;
 
     // 4. Net ROI
     const netAnnualValue = (totalPerksValue + spendRewardsDollarVal) - state.annualFee;
@@ -130,7 +291,7 @@
     };
   }
 
-  // Render Functions
+  // Master Render Function
   function renderAll() {
     const metrics = calculateMetrics();
     renderVerdict(metrics);
@@ -138,7 +299,28 @@
     renderProgressBar(metrics);
     renderBenefitsList();
     renderSpendSimulator(metrics);
-    renderComparisonTable(metrics);
+    updateBaselineSensitivityUI();
+  }
+
+  function updateBaselineSensitivityUI() {
+    document.querySelectorAll('.baseline-btn').forEach(btn => {
+      const tier = btn.getAttribute('data-baseline-tier');
+      if (tier === state.baselineTier) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+
+    const baselineInput = document.getElementById('input-baseline-cpp');
+    if (baselineInput && document.activeElement !== baselineInput) {
+      baselineInput.value = state.baselineCpp;
+    }
+
+    const baselineSubtext = document.getElementById('setting-baseline-subtext');
+    if (baselineSubtext) {
+      baselineSubtext.textContent = `Benchmark cents per point for baseline cards (e.g. 2X card = ${(2 * state.baselineCpp).toFixed(1)}%)`;
+    }
   }
 
   function renderVerdict(metrics) {
@@ -147,31 +329,30 @@
     const verdictText = document.getElementById('verdict-explanation');
 
     const netBaseline = Math.round(metrics.netValueOverBaseline);
-    const nominalNet = Math.round(metrics.netAnnualValue);
     const formattedBaseline = (netBaseline >= 0 ? '+$' : '-$') + Math.abs(netBaseline).toLocaleString();
-    const formattedNominal = (nominalNet >= 0 ? '+$' : '-$') + Math.abs(nominalNet).toLocaleString();
 
-    // Primary verdict displays true opportunity-adjusted net position
     verdictAmount.textContent = formattedBaseline;
-    verdictAmount.className = 'verdict-amount ' + (netBaseline >= 100 ? 'positive' : netBaseline >= 0 ? 'neutral' : 'negative');
+    verdictAmount.className = 'verdict-amount ' + (netBaseline >= 50 ? 'positive' : netBaseline >= 0 ? 'neutral' : 'negative');
 
-    if (state.mode === 'year_one') {
+    const spendAdv = Math.round(metrics.incrementalSpendAdvantage);
+    const spendAdvText = (spendAdv >= 0 ? '+$' + spendAdv : '-$' + Math.abs(spendAdv));
+    const perksVal = Math.round(metrics.totalPerksValue);
+
+    if (netBaseline >= 0) {
       verdictPill.className = 'verdict-pill renew';
-      verdictPill.textContent = 'STRONG KEEP / APPLY';
-      verdictText.textContent = `Year 1 includes the 80,000 point bonus + 25,000 companion award ($${Math.round(metrics.welcomeBonusValue)} value), delivering a +$${nominalNet.toLocaleString()} return.`;
+      verdictPill.textContent = 'RENEW (NET POSITIVE)';
+      verdictText.textContent = `Your utilized perks ($${perksVal}) and spend edge (${spendAdvText}) exceed the $${metrics.annualFee} fee by ${formattedBaseline}/year vs. alternative cards. Solid keeper card for your travel profile.`;
     } else {
-      const flightLoss = Math.round(metrics.categoryBreakdowns.find(c => c.id === 'alaska_hawaiian')?.diffVsBaseline || 0);
-      const foreignGain = Math.round(metrics.categoryBreakdowns.find(c => c.id === 'foreign_tx')?.diffVsBaseline || 0);
-      const spendAdv = Math.round(metrics.incrementalSpendAdvantage);
-
-      if (netBaseline >= 0) {
-        verdictPill.className = 'verdict-pill renew';
-        verdictPill.textContent = 'RENEW (NET POSITIVE)';
-        verdictText.textContent = `Your guaranteed perks ($${Math.round(metrics.totalPerksValue)}) and net spend edge (${spendAdv >= 0 ? '+$' + spendAdv : '-$' + Math.abs(spendAdv)}) exceed the $${metrics.annualFee} fee by ${formattedBaseline}/year vs. using your existing cards.`;
+      verdictPill.className = 'verdict-pill cancel';
+      if (state.activeCardId === 'bofa-atmos-summit') {
+        verdictPill.textContent = 'CANCEL OR DOWNGRADE TO ASCENT';
+        verdictText.textContent = `You are running a net deficit of ${formattedBaseline}/year vs. your benchmark cards. You pay the high $${metrics.annualFee} fee primarily for checked bags, while companion and lounge benefits are largely uncaptured. Downgrading to the $95 Atmos Ascent card preserves free bags while saving +$300/yr in fees!`;
+      } else if (state.activeCardId === 'bofa-atmos-ascent') {
+        verdictPill.textContent = 'CANCEL / TRIM';
+        verdictText.textContent = `You are running a net deficit of ${formattedBaseline}/year vs. your benchmark cards. The $${metrics.annualFee} annual fee exceeds the realized perk value. If you don't fly Alaska enough to check bags, consider closing this account.`;
       } else {
-        verdictPill.className = 'verdict-pill cancel';
-        verdictPill.textContent = 'CANCEL OR DOWNGRADE';
-        verdictText.textContent = `You are running a net deficit of ${formattedBaseline}/year vs. your benchmark wallet. You pay an unavoidable -$${Math.abs(flightLoss)} penalty on Alaska flights to unlock the $270 bag perk, partially offset by +$${foreignGain} on foreign spend. With a $0 companion award, this card loses money. Downgrading to the $95 card is recommended.`;
+        verdictPill.textContent = 'CANCEL / RECONSIDER';
+        verdictText.textContent = `You are running a net deficit of ${formattedBaseline}/year vs. your benchmark cards. The $${metrics.annualFee} annual fee exceeds your realized perks ($${perksVal}) and spend edge (${spendAdvText}). Unless you can capture more value from hotel/travel credits, this card may not justify its fee.`;
       }
     }
   }
@@ -184,7 +365,7 @@
     document.getElementById('kpi-spend-rewards').textContent = `${spendAdv >= 0 ? '+$' + spendAdv : '-$' + Math.abs(spendAdv)}`;
     
     const incBadge = document.getElementById('kpi-spend-inc');
-    incBadge.textContent = `Net vs Amex Plat & Venture X`;
+    incBadge.textContent = `Net vs Benchmark Cards`;
     incBadge.style.color = spendAdv >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
   }
 
@@ -192,7 +373,6 @@
     const netEffectiveVal = Math.max(0, metrics.totalPerksValue + metrics.incrementalSpendAdvantage);
     const maxScale = Math.max(netEffectiveVal, metrics.annualFee) * 1.25 || 500;
 
-    const perksPct = Math.min(100, (metrics.totalPerksValue / maxScale) * 100);
     const feeMarkerPct = Math.min(99, (metrics.annualFee / maxScale) * 100);
 
     const barPerks = document.getElementById('bar-perks');
@@ -211,7 +391,7 @@
     const container = document.getElementById('benefits-list-container');
     container.innerHTML = '';
 
-    CARD_CONFIG.benefits.forEach(b => {
+    state.config.benefits.forEach(b => {
       const itemState = state.benefits[b.id] || { enabled: true, userValue: b.defaultValue };
       const row = document.createElement('div');
       row.className = `benefit-item ${itemState.enabled ? '' : 'disabled'}`;
@@ -227,8 +407,18 @@
             <span class="slider-readout">${passes} of 8 (${passes > 0 ? '$' + (passes * 15) : '$0'})</span>
           </div>
         `;
+      } else if (b.id === 'admirals_club_passes') {
+        const passes = Math.round(itemState.userValue / 15);
+        controlsHtml = `
+          <div class="slider-wrapper">
+            <span style="font-size:12px; color:var(--text-muted);">Passes Used:</span>
+            <input type="range" min="0" max="4" step="1" value="${passes}" data-benefit="${b.id}" class="admirals-slider">
+            <span class="slider-readout">${passes} of 4 (${passes > 0 ? '$' + (passes * 15) : '$0'})</span>
+          </div>
+        `;
       } else if (b.id === 'checked_bags') {
-        const flights = Math.round(itemState.userValue / 45);
+        const costPerBag = (b.usageConfig && b.usageConfig.costPerBag) || 45;
+        const flights = Math.round(itemState.userValue / costPerBag);
         controlsHtml = `
           <div class="slider-wrapper">
             <span style="font-size:12px; color:var(--text-muted);">Flights with Checked Bag:</span>
@@ -246,13 +436,12 @@
           </div>
         `;
       } else {
-        // Direct value input slider / toggle
-        const maxRange = Math.max(b.faceValue * 1.2, 500);
+        const maxRange = Math.max(b.faceValue * 1.2, 350);
         controlsHtml = `
           <div class="slider-wrapper">
             <span style="font-size:12px; color:var(--text-muted);">Your Valuation:</span>
-            <input type="range" min="0" max="${maxRange}" step="10" value="${itemState.userValue}" data-benefit="${b.id}" class="generic-slider">
-            <span class="slider-readout">$${itemState.userValue}</span>
+            <input type="range" min="0" max="${maxRange}" step="5" value="${itemState.userValue}" data-benefit="${b.id}" class="generic-slider">
+            <span class="slider-readout">$${Number(itemState.userValue).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})}</span>
           </div>
         `;
       }
@@ -268,7 +457,7 @@
             <div style="font-size:11.5px; color:var(--text-subtle); margin-top:2px;"><em>💡 ${b.helpText}</em></div>
           </div>
           <div class="benefit-val-group">
-            <div class="benefit-user-val">$${itemState.enabled ? itemState.userValue : 0}</div>
+            <div class="benefit-user-val">$${itemState.enabled ? Number(itemState.userValue).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2}) : 0}</div>
             <div class="benefit-face-val">Face: $${b.faceValue}</div>
           </div>
         </div>
@@ -299,12 +488,22 @@
       });
     });
 
-    // Lounge pass slider
+    // Lounge slider
     document.querySelectorAll('.lounge-slider').forEach(sl => {
       sl.addEventListener('input', e => {
         const id = e.target.getAttribute('data-benefit');
         const count = parseInt(e.target.value, 10);
-        state.benefits[id].userValue = count * 15; // $15 per realistic lounge pass
+        state.benefits[id].userValue = count * 15;
+        renderAll();
+      });
+    });
+
+    // Admirals Club slider
+    document.querySelectorAll('.admirals-slider').forEach(sl => {
+      sl.addEventListener('input', e => {
+        const id = e.target.getAttribute('data-benefit');
+        const count = parseInt(e.target.value, 10);
+        state.benefits[id].userValue = count * 15;
         renderAll();
       });
     });
@@ -314,12 +513,14 @@
       sl.addEventListener('input', e => {
         const id = e.target.getAttribute('data-benefit');
         const count = parseInt(e.target.value, 10);
-        state.benefits[id].userValue = count * 45; // $45 per flight checked bag
+        const bObj = state.config.benefits.find(b => b.id === id);
+        const costPerBag = (bObj && bObj.usageConfig && bObj.usageConfig.costPerBag) || 45;
+        state.benefits[id].userValue = count * costPerBag;
         renderAll();
       });
     });
 
-    // Same day change slider
+    // Same-day change slider
     document.querySelectorAll('.sameday-slider').forEach(sl => {
       sl.addEventListener('input', e => {
         const id = e.target.getAttribute('data-benefit');
@@ -333,7 +534,7 @@
     document.querySelectorAll('.generic-slider').forEach(sl => {
       sl.addEventListener('input', e => {
         const id = e.target.getAttribute('data-benefit');
-        state.benefits[id].userValue = parseInt(e.target.value, 10);
+        state.benefits[id].userValue = parseFloat(e.target.value);
         renderAll();
       });
     });
@@ -342,6 +543,13 @@
   function renderSpendSimulator(metrics) {
     const tbody = document.getElementById('spend-tbody');
     tbody.innerHTML = '';
+
+    const cardShortName = state.config.cardName.replace(' Card', '');
+
+    const spendDesc = document.getElementById('spend-comparison-desc');
+    if (spendDesc) {
+      spendDesc.textContent = `Comparing rewards earned on this card vs. swiping your baseline cards (Amex Gold 4X, Amex Plat 5X, Venture X 2X) valued at ${state.baselineCpp}¢/pt:`;
+    }
 
     metrics.categoryBreakdowns.forEach(cat => {
       const tr = document.createElement('tr');
@@ -360,9 +568,9 @@
           </div>
         </td>
         <td>
-          <span class="rate-badge">${cat.effectiveMultiplier.toFixed(1)}x pts (${cat.atmosReturnPct.toFixed(1)}%)</span>
+          <span class="rate-badge">${Number.isInteger(cat.effectiveMultiplier) ? cat.effectiveMultiplier : cat.effectiveMultiplier.toFixed(1)}x pts (${cat.cardReturnPct.toFixed(1)}%)</span>
           <div style="font-weight:600; color:#fff; margin-top:3px;">${cat.pts.toLocaleString()} pts</div>
-          <div style="font-size:11px; color:var(--accent-green);">$${Math.round(cat.atmosVal).toLocaleString()} val</div>
+          <div style="font-size:11px; color:var(--accent-green);">$${Math.round(cat.cardVal).toLocaleString()} val</div>
         </td>
         <td>
           <span class="badge-baseline">${cat.baselineCard}</span>
@@ -374,7 +582,7 @@
             ${isPositive ? '+$' + diffVal : '-$' + Math.abs(diffVal)}
           </span>
           <div style="font-size:10px; color:var(--text-subtle); margin-top:2px;">
-            ${isPositive ? 'Atmos wins' : 'Lost vs ' + cat.baselineCard}
+            ${isPositive ? `${cardShortName} wins` : 'Lost vs ' + cat.baselineCard}
           </div>
         </td>
       `;
@@ -390,7 +598,7 @@
       });
     });
 
-    // Update Spend summary text
+    // Summary texts
     document.getElementById('spend-total-annual').textContent = `$${metrics.totalAnnualSpend.toLocaleString()}/yr`;
     document.getElementById('spend-points-total').textContent = `${metrics.totalPointsEarned.toLocaleString()} pts ($${Math.round(metrics.spendRewardsDollarVal).toLocaleString()})`;
 
@@ -407,116 +615,77 @@
     }
   }
 
-  function renderComparisonTable(metrics) {
-    const tbody = document.getElementById('comp-tbody');
-    if (!tbody) return;
-    
-    tbody.innerHTML = `
-      <tr>
-        <td><strong>Annual Fee</strong></td>
-        <td style="color:var(--accent-red);">$${metrics.annualFee}</td>
-        <td style="color:var(--accent-red);">$${metrics.annualFee}</td>
-        <td>Ongoing recurring fee</td>
-      </tr>
-      <tr>
-        <td><strong>Sign-up / Welcome Bonus</strong></td>
-        <td style="color:var(--accent-green); font-weight:700;">+$1,470 (80k pts + 25k companion)</td>
-        <td style="color:var(--text-subtle);">$0 (Expired after Yr 1)</td>
-        <td>Requires $4k spend in 90 days</td>
-      </tr>
-      <tr>
-        <td><strong>Anniversary Companion Award (25k pts)</strong></td>
-        <td>$350</td>
-        <td>$${state.benefits.companion_award_anniversary?.enabled ? state.benefits.companion_award_anniversary.userValue : 0}</td>
-        <td>Renews every anniversary</td>
-      </tr>
-      <tr>
-        <td><strong>8 Lounge Passes (2/qtr)</strong></td>
-        <td>$180</td>
-        <td>$${state.benefits.lounge_passes?.enabled ? state.benefits.lounge_passes.userValue : 0}</td>
-        <td>Quarterly use-it-or-lose-it rule</td>
-      </tr>
-      <tr>
-        <td><strong>Checked Bags + Same-day Changes</strong></td>
-        <td>$215</td>
-        <td>$${(state.benefits.checked_bags?.enabled ? state.benefits.checked_bags.userValue : 0) + (state.benefits.same_day_change?.enabled ? state.benefits.same_day_change.userValue : 0)}</td>
-        <td>Based on your flight frequency</td>
-      </tr>
-      <tr>
-        <td><strong>Annual Spend Rewards (at current spend)</strong></td>
-        <td>$${Math.round(metrics.spendRewardsDollarVal)}</td>
-        <td>$${Math.round(metrics.spendRewardsDollarVal)}</td>
-        <td>3x multipliers + 10% BofA bonus</td>
-      </tr>
-      <tr style="background:#172236; font-weight:700;">
-        <td><strong>Net Value (Total Value - Fee)</strong></td>
-        <td style="color:var(--accent-green);">+$${Math.round((metrics.totalPerksValue + CARD_CONFIG.yearOneWelcomeOffer.estimatedValue + metrics.spendRewardsDollarVal) - metrics.annualFee).toLocaleString()}</td>
-        <td style="color:${metrics.netAnnualValue >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'};">$${Math.round(metrics.netAnnualValue).toLocaleString()}</td>
-        <td>Year 1 is high ROI; Renewal depends on flight perks</td>
-      </tr>
-    `;
-  }
-
   // Setup Global Listeners
   function initGlobalListeners() {
-    // Mode toggles (Renewal vs Year 1)
-    const btnRenewal = document.getElementById('btn-mode-renewal');
-    const btnYearOne = document.getElementById('btn-mode-yearone');
-
-    if (btnRenewal && btnYearOne) {
-      btnRenewal.addEventListener('click', () => {
-        state.mode = 'renewal';
-        btnRenewal.classList.add('active');
-        btnYearOne.classList.remove('active');
-        renderAll();
-      });
-
-      btnYearOne.addEventListener('click', () => {
-        state.mode = 'year_one';
-        btnYearOne.classList.add('active');
-        btnRenewal.classList.remove('active');
+    // Annual Fee Input
+    const feeInput = document.getElementById('input-annual-fee');
+    if (feeInput) {
+      feeInput.addEventListener('input', e => {
+        state.annualFee = Math.max(0, parseInt(e.target.value, 10) || 0);
         renderAll();
       });
     }
 
-    // Presets
-    document.querySelectorAll('[data-preset]').forEach(btn => {
-      btn.addEventListener('click', e => {
-        const key = e.target.getAttribute('data-preset');
-        document.querySelectorAll('[data-preset]').forEach(b => b.classList.remove('active'));
-        e.target.classList.add('active');
-        initStateFromPreset(key);
+    // Point Valuation Cents
+    const ptInput = document.getElementById('input-point-val');
+    if (ptInput) {
+      ptInput.addEventListener('input', e => {
+        state.pointValuationCents = Math.max(0.1, parseFloat(e.target.value) || 1.4);
         renderAll();
+      });
+    }
+
+    // Relationship bonus toggle
+    const bofaToggle = document.getElementById('toggle-bofa-bonus');
+    if (bofaToggle) {
+      bofaToggle.addEventListener('change', e => {
+        state.bofaBonusActive = e.target.checked;
+        renderAll();
+      });
+    }
+
+    // Baseline sensitivity buttons
+    document.querySelectorAll('.baseline-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tier = btn.getAttribute('data-baseline-tier');
+        if (BASELINE_TIERS[tier]) {
+          state.baselineTier = tier;
+          state.baselineCpp = BASELINE_TIERS[tier].cpp;
+          renderAll();
+        }
       });
     });
 
-    // Annual Fee Input
-    const feeInput = document.getElementById('input-annual-fee');
-    feeInput.value = state.annualFee;
-    feeInput.addEventListener('input', e => {
-      state.annualFee = Math.max(0, parseInt(e.target.value, 10) || 0);
-      renderAll();
-    });
-
-    // Point Valuation Cents
-    const ptInput = document.getElementById('input-point-val');
-    ptInput.value = state.pointValuationCents;
-    ptInput.addEventListener('input', e => {
-      state.pointValuationCents = Math.max(0.1, parseFloat(e.target.value) || 1.4);
-      renderAll();
-    });
-
-    // BofA 10% bonus toggle
-    const bofaToggle = document.getElementById('toggle-bofa-bonus');
-    bofaToggle.checked = state.bofaBonusActive;
-    bofaToggle.addEventListener('change', e => {
-      state.bofaBonusActive = e.target.checked;
-      renderAll();
-    });
+    // Baseline Points Valuation input
+    const baselineInput = document.getElementById('input-baseline-cpp');
+    if (baselineInput) {
+      baselineInput.addEventListener('input', e => {
+        const val = Math.max(0.1, parseFloat(e.target.value) || 1.75);
+        state.baselineCpp = val;
+        let matchedTier = null;
+        Object.keys(BASELINE_TIERS).forEach(k => {
+          if (Math.abs(BASELINE_TIERS[k].cpp - val) < 0.001) {
+            matchedTier = k;
+          }
+        });
+        state.baselineTier = matchedTier;
+        renderAll();
+      });
+    }
   }
 
   // Initial Boot
-  initStateFromPreset('my_actual');
-  initGlobalListeners();
-  renderAll();
+  function boot() {
+    const initialCardId = getInitialCardId();
+    initCardSelector();
+    switchCard(initialCardId);
+    initGlobalListeners();
+  }
+
+  // Ensure DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
 })();
