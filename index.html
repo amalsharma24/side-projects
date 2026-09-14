@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Credit Card Renewal ROI Analyzer | Atmos™ Rewards Premium</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    
+    <!-- Top Header -->
+    <header class="header">
+      <div class="header-title-group">
+        <h1>
+          Atmos™ Rewards Premium Card
+          <span class="badge-card">Bank of America</span>
+        </h1>
+        <p class="header-subtitle">
+          Alaska Airlines & Hawaiian Airlines • Annual Fee vs Recurring Perks Valuation Model
+        </p>
+      </div>
+
+      <!-- Mode Toggle: Renewal vs Year 1 (Commented out)
+      <div class="mode-toggle">
+        <button id="btn-mode-renewal" class="mode-btn active">Year 2+ Renewal Analysis</button>
+        <button id="btn-mode-yearone" class="mode-btn">Year 1 (With Welcome Bonus)</button>
+      </div>
+      -->
+    </header>
+
+    <!-- Hero Verdict Banner -->
+    <section class="verdict-banner">
+      <div class="verdict-main">
+        <div>
+          <span class="verdict-label">Renewal Decision Recommendation</span>
+          <div class="verdict-status">
+            <span id="verdict-pill" class="verdict-pill renew">RENEW</span>
+            <span id="verdict-amount" class="verdict-amount positive">+$425</span>
+          </div>
+        </div>
+        <p id="verdict-explanation" class="verdict-explanation">
+          Calculating your net return based on perceived benefit values and spend patterns...
+        </p>
+      </div>
+
+      <!-- KPI Summary Cards -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <span class="kpi-title">Annual Fee</span>
+          <span id="kpi-annual-fee" class="kpi-value">$395</span>
+          <span class="kpi-sub">Statement fee charged</span>
+        </div>
+
+        <div class="kpi-card">
+          <span class="kpi-title">Perceived Perks Value</span>
+          <span id="kpi-total-benefits" class="kpi-value">$350</span>
+          <span class="kpi-sub">Bags ($270), Lounge ($30), Delay ($50)</span>
+        </div>
+
+        <div class="kpi-card">
+          <span class="kpi-title">Spend Edge vs. Wallet</span>
+          <span id="kpi-spend-rewards" class="kpi-value" style="color:var(--accent-red);">-$34</span>
+          <span id="kpi-spend-inc" class="kpi-sub" style="color:var(--accent-red);">vs Amex Plat & Venture X</span>
+        </div>
+
+        <!-- Progress Bar: Value vs Fee -->
+        <div class="roi-bar-container">
+          <div class="roi-bar-labels">
+            <span id="bar-label-total">Total Return: $930</span>
+            <span id="bar-label-fee">Annual Fee: $395</span>
+          </div>
+          <div class="roi-bar-track">
+            <div id="bar-perks" class="roi-bar-fill bar-perks" style="width: 40%;"></div>
+            <div id="bar-spend" class="roi-bar-fill bar-spend" style="width: 60%;"></div>
+            <div id="bar-fee-marker" class="roi-marker" style="left: 42%;" title="Annual Fee Break-even Point"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- Main Content: Single Column Layout -->
+    <div class="main-layout">
+
+      <!-- Section 1: Spend Rewards vs. Baseline Wallet -->
+      <div class="section-card">
+        <div class="section-header">
+          <div class="section-title">
+            <span>Spend Rewards vs. Baseline Wallet</span>
+          </div>
+          <span class="section-badge" id="spend-total-annual">$25,500/yr</span>
+        </div>
+
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
+          Comparing rewards earned on Atmos vs. swiping your existing cards (Amex Gold 4X, Amex Plat 5X, Venture X 2X):
+        </p>
+
+        <table class="spend-table">
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>Annual Spend</th>
+              <th>Atmos Return</th>
+              <th>Your Baseline Card</th>
+              <th>Net vs Baseline</th>
+            </tr>
+          </thead>
+          <tbody id="spend-tbody">
+            <!-- Populated dynamically -->
+          </tbody>
+        </table>
+
+        <div style="background:#131c2c; padding:14px; border-radius:8px; border:1px solid var(--border-color); font-size:12px; color:var(--text-muted);">
+          <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+            <span>Atmos Rewards Earned:</span>
+            <strong id="spend-points-total" style="color:var(--text-main);">0 pts ($0)</strong>
+          </div>
+          <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+            <span>Baseline Wallet Earnings (Amex + Venture X):</span>
+            <strong id="spend-baseline-total" style="color:#c084fc;">$0</strong>
+          </div>
+          <div style="display:flex; justify-content:space-between; padding-top:6px; border-top:1px solid rgba(255,255,255,0.08);">
+            <span>Opportunity Difference:</span>
+            <strong id="spend-net-advantage" style="font-weight:700;">$0</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Card Benefits & Your Dollar Valuations -->
+      <div class="section-card">
+        <div class="section-header">
+          <div class="section-title">
+            <span>Card Benefits & Your Dollar Valuations</span>
+          </div>
+        </div>
+
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+          Adjust the sliders to reflect what these benefits are actually worth to <em>your</em> personal travel habits. Toggle off benefits you don't use.
+        </p>
+
+        <div id="benefits-list-container">
+          <!-- Populated dynamically by app.js -->
+        </div>
+      </div>
+
+      <!-- Section 3: Card Parameters -->
+      <div class="section-card">
+        <div class="section-header">
+          <div class="section-title">
+            <span>Card Parameters</span>
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Annual Fee</div>
+            <div class="setting-subtext">Verified from statement: $395.00 billed annually</div>
+          </div>
+          <div class="setting-control">
+            <input type="number" id="input-annual-fee" value="395" step="5">
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Atmos Point Valuation</div>
+            <div class="setting-subtext">Default 1.4¢/pt (conservative Alaska redemption)</div>
+          </div>
+          <div class="setting-control">
+            <input type="number" id="input-point-val" value="1.4" step="0.1" min="0.5" max="3.0">
+          </div>
+        </div>
+
+        <!-- BofA 10% Bonus Callout -->
+        <div class="bofa-bonus-box" style="margin-top: 14px;">
+          <div>
+            <div class="bofa-title">Bank of America® 10% Rewards Bonus</div>
+            <div class="bofa-desc">Earn 10% more points if you hold an eligible BofA checking/savings account.</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-bofa-bonus">
+            <span style="color:#fff; font-weight:600;">Active</span>
+          </label>
+        </div>
+      </div>
+
+    </div>
+
+    <footer class="footer">
+      Atmos™ Rewards / Bank of America Alaska & Hawaiian Airlines Card ROI Analyzer • Local Lab at <code>C:\dev\labs\credit-card-roi</code>
+    </footer>
+
+  </div>
+
+  <!-- Scripts -->
+  <script src="card-data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
