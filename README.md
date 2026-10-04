@@ -29,12 +29,65 @@ Start-Process "index.html"
 - `tools/`: Data processing scripts for statement classification and card creation.
 - `templates/`: Boilerplates for adding new card models.
 
-## Development & Syncing
+---
 
-Primary development is maintained in `C:\dev\labs\credit-card-roi`.
+## What Was Set Up
 
-To push changes to the shared GitHub repository ([shipunicorn/labs_shared](https://github.com/shipunicorn/labs_shared)):
-```powershell
-git push-shared
-```
-*(Runs `git subtree push --prefix=credit-card-roi labs-shared main` under the hood).*
+1. **Remote Repository**:
+   - Private GitHub repository created at [shipunicorn/labs_shared](https://github.com/shipunicorn/labs_shared).
+   - Write access collaborator invitation sent to `amalsharma24`.
+   - Linked as git remote `labs-shared` in the primary `C:\dev\labs` repository.
+
+2. **Git Subtree Workflow**:
+   - `credit-card-roi` is maintained inside the monorepo at `C:\dev\labs\credit-card-roi`.
+   - Configured local Git aliases in `C:\dev\labs` to seamlessly push and pull from `labs_shared`:
+     - `git push-shared`: pushes subtree commits from `credit-card-roi` to `labs_shared:main`.
+     - `git pull-shared`: pulls incoming commits from `labs_shared:main` into `credit-card-roi`.
+   - Both aliases run with `!git subtree ...`, allowing them to be executed either from the root `C:\dev\labs` or directly inside `C:\dev\labs\credit-card-roi`.
+
+3. **Privacy & PII Protection**:
+   - Raw statement exports (`statements/raw/*.pdf`) are gitignored in the parent repository and never pushed to GitHub.
+
+---
+
+## Your Daily Workflow Going Forward
+
+### For the Owner (Editing in `C:\dev\labs\credit-card-roi`)
+Always perform your edits in your primary working directory at `C:\dev\labs\credit-card-roi`:
+
+1. **Make changes and commit to `labs`**:
+   ```powershell
+   cd C:\dev\labs\credit-card-roi
+   # Make edits to files...
+   git add .
+   git commit -m "feat: describe your change"
+   ```
+
+2. **Push updates to `labs_shared`**:
+   ```powershell
+   git push-shared
+   ```
+   *(Pushes the changes to https://github.com/shipunicorn/labs_shared on GitHub).*
+
+3. **Pull collaborator updates (if any)**:
+   ```powershell
+   git pull-shared
+   ```
+
+### For Collaborators (`amalsharma24`)
+Collaborators clone and work with `labs_shared` as a normal, standalone repository:
+
+1. **Clone the repository**:
+   ```powershell
+   git clone https://github.com/shipunicorn/labs_shared.git
+   cd labs_shared
+   ```
+
+2. **Run and edit**:
+   - Open `index.html` in browser.
+   - Commit and push to `main` (or a feature branch and pull request) using standard git commands:
+     ```powershell
+     git add .
+     git commit -m "feat: describe change"
+     git push origin main
+     ```
