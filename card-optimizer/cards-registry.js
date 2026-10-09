@@ -37,6 +37,18 @@ const CARDS_REGISTRY = [
     issuer: "Citi / ThankYou® Rewards",
     dataFile: "citi-strata-elite/card-data.js",
     analysisDoc: "citi-strata-elite/card_analysis.md"
+  },
+  {
+    id: "amex-gold",
+    name: "American Express® Gold Card ($325)",
+    shortName: "Amex Gold",
+    annualFee: 325,
+    folder: "amex-gold",
+    tag: "Dining & Groceries",
+    badgeColor: "#d97706",
+    issuer: "American Express / Membership Rewards®",
+    dataFile: "amex-gold/card-data.js",
+    analysisDoc: "amex-gold/card_analysis.md"
   }
 ];
 

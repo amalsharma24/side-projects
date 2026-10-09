@@ -80,6 +80,16 @@
   // Switch Active Card
   function switchCard(cardId) {
     if (!window.CARDS_DATA || !window.CARDS_DATA[cardId]) {
+      const reg = (window.CARDS_REGISTRY || []).find(c => c.id === cardId);
+      if (reg && reg.dataFile) {
+        const script = document.createElement('script');
+        script.src = reg.dataFile;
+        script.onload = function() {
+          switchCard(cardId);
+        };
+        document.body.appendChild(script);
+        return;
+      }
       console.error(`Card data for ${cardId} not loaded.`);
       return;
     }
