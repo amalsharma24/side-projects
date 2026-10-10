@@ -62,7 +62,7 @@ APARTMENTS = [
         "community": "Riverpark Apartments",
         "unitNumber": "A-542",
         "details": "2 Bed / 2 Bath Loft (1,472 sq ft)",
-        "baseAnchorPrice": 3308.0,
+        "baseAnchorPrice": 3310.0,
         "freezeDays": 10,
         "driftRate": 8.75,
         "special": "Up to 1 Month Free Special!",
@@ -75,7 +75,7 @@ APARTMENTS = [
         "community": "Riverpark Apartments",
         "unitNumber": "B-517",
         "details": "2 Bed / 2 Bath Loft (1,415 sq ft)",
-        "baseAnchorPrice": 3633.0,
+        "baseAnchorPrice": 3816.0,
         "freezeDays": 10,
         "driftRate": 9.0,
         "special": "Up to 1 Month Free Special!",
@@ -114,7 +114,7 @@ def fetch_live_unit_matrix(apt):
         base_price = apt.get('baseAnchorPrice', 0.0)
         freeze_days = apt.get('freezeDays', 0)
         drift_rate = apt.get('driftRate', 0.0)
-        today = datetime(2026, 10, 8)
+        today = datetime(2026, 10, 10)
         
         for d in range(30):
             dt = today + timedelta(days=d)
@@ -127,7 +127,7 @@ def fetch_live_unit_matrix(apt):
     return prices_by_date
 
 def main():
-    today = datetime(2026, 10, 8)
+    today = datetime(2026, 10, 10)
     promo_deadline_dt = datetime(2026, 10, 15)
 
     dataset = []
