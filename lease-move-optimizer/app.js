@@ -6,7 +6,7 @@
     selectedAptId: 'wa027-380',
     selectedTerm: 12,
     selectedSignDate: 'all',
-    moveInRangeStart: '2026-10-08',
+    moveInRangeStart: '2026-10-11',
     moveInRangeEnd: '2026-11-30',
     currentLeaseEnd: '2026-11-02', // Current Lease Expiration Date
     currentRent: 4500, // Current rent: $4,500/mo ($150/day)
@@ -61,7 +61,7 @@
       if (!isNaN(freezeDays) && !isNaN(driftRate)) {
         const signDt = new Date(opt.signDate + 'T00:00:00');
         const moveInDt = new Date(opt.moveInDate + 'T00:00:00');
-        const todayDt = new Date('2026-10-08T00:00:00');
+        const todayDt = new Date('2026-10-11T00:00:00');
         
         const signOffset = Math.max(0, Math.ceil((signDt - todayDt) / (1000 * 60 * 60 * 24)));
         const anchorDriftPerDay = calib.anchorDelta > 0 ? calib.anchorDelta : 5.0;
@@ -226,7 +226,7 @@
         const opt = document.createElement('option');
         opt.value = isoDate;
         let note = '';
-        if (isoDate === '2026-10-08') note = ' — Today';
+        if (isoDate === '2026-10-11') note = ' — Today';
         if (isoDate === '2026-10-15') note = ' — ⚠️ Promo Deadline';
         opt.textContent = `${formatted}${note}`;
         signSelect.appendChild(opt);
@@ -313,7 +313,7 @@
         </td>
         <td>
           <div style="font-weight:600; color:var(--accent-amber);">${sc.signDateFormatted}</div>
-          <div style="font-size:11px; color:var(--text-muted);">${sc.signDate === '2026-10-08' ? '⭐ Today' : 'Sign Date'}</div>
+          <div style="font-size:11px; color:var(--text-muted);">${sc.signDate === '2026-10-11' ? '⭐ Today' : 'Sign Date'}</div>
         </td>
         <td>
           <div style="font-weight:600; color:var(--accent-cyan);">${sc.moveInFormatted}</div>

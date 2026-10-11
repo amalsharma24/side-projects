@@ -114,7 +114,7 @@ def fetch_live_unit_matrix(apt):
         base_price = apt.get('baseAnchorPrice', 0.0)
         freeze_days = apt.get('freezeDays', 0)
         drift_rate = apt.get('driftRate', 0.0)
-        today = datetime(2026, 10, 10)
+        today = datetime(2026, 10, 11)
         
         for d in range(30):
             dt = today + timedelta(days=d)
@@ -127,7 +127,7 @@ def fetch_live_unit_matrix(apt):
     return prices_by_date
 
 def main():
-    today = datetime(2026, 10, 10)
+    today = datetime(2026, 10, 11)
     promo_deadline_dt = datetime(2026, 10, 15)
 
     dataset = []
